@@ -1,6 +1,0 @@
-IADD:00000000:/firmware.bin
-IDSET:/firmware.bin:7f0118ae1110157171479453
-IADD:00000001:/firmware.elf
-IDSET:/firmware.elf:7f011a125110281325298625
-IADD:00000002:/partitions.bin
-IDSET:/partitions.bin:7f011af9f110333308646722

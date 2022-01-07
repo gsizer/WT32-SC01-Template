@@ -12,22 +12,23 @@
 #include <TFT_eSPI.h>
 // Graphical Interface
 #include <lvgl.h>
+#include "esp_freertos_hooks.h"
 
 // Environment Variables
 static const uint16_t ScreenWidth = TFT_WIDTH;
 static const uint16_t ScreenHeight = TFT_HEIGHT;
+static lv_obj_t *Screen;
 
 // DisplayDriver
+static TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
 static lv_disp_drv_t *lvDispDrv;
 static lv_disp_t *lvDisplay;
 static lv_disp_draw_buf_t lvDrawBuf;
 static lv_color_t lvBuffer[ScreenWidth*10];
 
 // Dummy InputDriver for LVGL
-static lv_indev_drv_t lvIndevDrv;
-
 static FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenHeight, (uint8_t)PIN_SDA, (uint8_t)PIN_SCL);
-static TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
+static lv_indev_drv_t lvIndevDrv;
 
 // callback for LVGL to flush display memory
 void cbFlushDisplay(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_ptr){
@@ -51,6 +52,10 @@ void cbReadTouch(lv_indev_drv_t *driver, lv_indev_data_t *data){
     data->state = LV_INDEV_STATE_REL;
   }
 }
+
+// handle the buttons & fingers
+void HomeEventHandler(lv_event_t *event){}
+
 
 void setup() {
   // open SerialPort
@@ -79,10 +84,18 @@ void setup() {
   lv_indev_drv_init(&lvIndevDrv);
   lvIndevDrv.type = LV_INDEV_TYPE_POINTER;
   lvIndevDrv.read_cb = cbReadTouch;
+
+  // HomeScreen
+  Screen = lv_obj_create(NULL);
+  lv_obj_t *lblBackground = lv_label_create(Screen);
+  lv_label_set_text(lblBackground, "WT32-SC01-LVGL");
+  lv_obj_set_align(lblBackground, LV_ALIGN_CENTER);
+  lv_obj_add_event_cb(Screen, HomeEventHandler, LV_EVENT_CLICKED, NULL);
+  lv_scr_load(Screen);
 }
 
 // let LVGL handle most things
 void loop() {
-  lv_timer_handler();
+  lv_task_handler();
   delay(5);
 }
