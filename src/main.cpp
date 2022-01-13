@@ -21,7 +21,7 @@ static const uint16_t ScreenHeight = TFT_HEIGHT;
 static TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
 static FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenHeight, PIN_SDA, PIN_SCL);
 static TouchPoint LastTouch;
-static gui mGUI = gui(480, 320);
+static GUI mGUI = GUI(480, 320);
 
 void setup(){
   // attempt serial connection
