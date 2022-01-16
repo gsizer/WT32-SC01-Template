@@ -4,43 +4,47 @@
 ||  Template Project
 ******************************************************************************/
 #include <Arduino.h>
+// Touch Panel
+#include <Wire.h>
+#include <FT62XXTouchScreen.h>
 // Graphical Display
 #include <SPI.h>
 #include <TFT_eSPI.h>
-// Touch Interface
-#include <Wire.h>
-#include <FT62XXTouchScreen.h>
-// Test UI
-#include "gui.h"
 
-// System Variables
-static const uint16_t ScreenWidth = TFT_WIDTH;
-static const uint16_t ScreenHeight = TFT_HEIGHT;
+// System Constants
+const uint16_t ScreenWidth = 320;
+const uint16_t ScreenHeight = 480;
 
 // Global Objects
-static TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
-static FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenHeight, PIN_SDA, PIN_SCL);
-static TouchPoint LastTouch;
-static GUI mGUI = GUI(480, 320);
+TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
+FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenWidth, PIN_SDA, PIN_SCL);
+TouchPoint LastTouch;
+
+// Global Variables
+uint32_t TouchCount = 0;
 
 void setup(){
-  // attempt serial connection
-  Serial.begin(115200);
   // Hardware Display
   Display.init();
   Display.setRotation(1);
+  Display.setTextColor(TFT_ORANGE);
   Display.fillScreen(TFT_BLACK);
   // Backlight
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, HIGH);
   // Touch Panel
   TouchPanel.begin();
+  // attempt serial connection
+  Serial.begin(115200);
+  Serial.println("");
 }
 
 void loop(){
-  delay(10);
   LastTouch = TouchPanel.read();
-  if(Serial.availableForWrite() && LastTouch.touched){
-    Serial.printf("Touched at %u:%u\n", LastTouch.xPos, LastTouch.yPos);
+  if(LastTouch.touched){
+    // log it
+    TouchCount++;
+    Serial.printf("Touch: %u at %u:%u\n", TouchCount, LastTouch.xPos, LastTouch.yPos);
   }
+  delay(10);
 }
