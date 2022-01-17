@@ -11,19 +11,80 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
+//********************************
+class button{
+  private:
+    uint8_t _x, _y, _w, _h;
+    char *_label;
+    void(*_callback)() = nullptr;
+    void _press(){
+      Display.fillRoundRect(_x, _y, _w, _h, 4, TFT_CYAN);
+      Display.setTextColor(TFT_ORANGE);
+      Display.drawCentreString(_label, _x+(_w/2), _y+(_h/2), 4);
+    }
+    void _release(){
+      Display.fillRoundRect(_x, _y, _w, _h, 4, TFT_DARKCYAN;
+      Display.setTextColor(TFT_WHITE);
+      Display.drawCentreString(_label, _x+(_w/2), _y+(_h/2), 4);
+    }
+  public:
+    button(uint8_t x, uint8_t y, uint8_t w, uint8_t h, char *l, void(*callback)()){
+      _x=x;
+      _y=y;
+      _w=w;
+      _h=h;
+      _label=l;
+      _callback=callback;
+      _release();
+    }
+    void checkTouch(uint8_t x, uint8_t y){
+      if(x>_x && x<_w){
+        // button laterally hit
+        if( y>_y && y<_h){
+          // button vertically hit
+          // execute code at callback
+          _press();
+          (*_callback)();
+          _release();
+        }
+      }
+    }
+};
+
+//********************************
 // System Constants
 const uint16_t ScreenWidth = 320;
 const uint16_t ScreenHeight = 480;
+enum MachineStates { Boot, Wait, Run, Error };
 
+//********************************
 // Global Objects
 TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
 FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenWidth, PIN_SDA, PIN_SCL);
 TouchPoint LastTouch;
 
+//********************************
 // Global Variables
+MachineStates CurrentState;
 uint32_t TouchCount = 0;
 
+//********************************
+// Screen Objects
+button btnBTLE = button(10, 10, 64, 64, "BTLE", *logPress);
+button btnWIFI = button(10, 84, 64, 64, "WIFI", *logPress);
+button btnHOME = button(10, 168, 64, 64, "HOME", *logPress);
+
+//********************************
+// logPress
+void logPress(){
+  if(Serial.availableForWrite()){
+    Serial.printf("Touch %u at %u:%u\n", TouchCount, LastTouch.xPos, LastTouch.yPos);
+  }
+}
+
+//********************************
 void setup(){
+  CurrentState = Boot;
   // Hardware Display
   Display.init();
   Display.setRotation(1);
@@ -39,12 +100,29 @@ void setup(){
   Serial.println("");
 }
 
+//********************************
 void loop(){
   LastTouch = TouchPanel.read();
-  if(LastTouch.touched){
-    // log it
-    TouchCount++;
-    Serial.printf("Touch: %u at %u:%u\n", TouchCount, LastTouch.xPos, LastTouch.yPos);
+  switch (CurrentState){
+    case Boot:
+      // load settings
+      break;
+    case Wait:
+      // power saving
+      break;
+    case Run:
+      // execute application
+      if(LastTouch.touched){
+        btnBTLE.checkTouch(LastTouch.xPos, LastTouch.yPos);
+        btnWIFI.checkTouch(LastTouch.xPos, LastTouch.yPos);
+        btnHOME.checkTouch(LastTouch.xPos, LastTouch.yPos);
+      }
+      break;
+    case Error:
+      // cosmic entity
+    default:
+      // unlikely default, reboot both cpu
+      esp_restart();
+      break;
   }
-  delay(10);
 }
