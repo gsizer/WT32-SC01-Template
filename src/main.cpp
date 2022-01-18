@@ -12,18 +12,37 @@
 #include <TFT_eSPI.h>
 
 //********************************
+// System Constants
+const uint16_t ScreenWidth = 320;
+const uint16_t ScreenHeight = 480;
+enum MachineStates { Boot, Wait, Run, Error };
+
+//********************************
+// Global Objects
+TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
+FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenWidth, PIN_SDA, PIN_SCL);
+TouchPoint LastTouch;
+
+//********************************
+// Global Variables
+MachineStates CurrentState;
+uint32_t TouchCount = 0;
+
+//********************************
+// BUTTON_H depends on Display and TouchPanel existing
+// no error checking yet
 class button{
   private:
     uint8_t _x, _y, _w, _h;
     char *_label;
-    void(*_callback)() = nullptr;
+    void(*_callback)()=nullptr;
     void _press(){
       Display.fillRoundRect(_x, _y, _w, _h, 4, TFT_CYAN);
       Display.setTextColor(TFT_ORANGE);
       Display.drawCentreString(_label, _x+(_w/2), _y+(_h/2), 4);
     }
     void _release(){
-      Display.fillRoundRect(_x, _y, _w, _h, 4, TFT_DARKCYAN;
+      Display.fillRoundRect(_x, _y, _w, _h, 4, TFT_DARKCYAN);
       Display.setTextColor(TFT_WHITE);
       Display.drawCentreString(_label, _x+(_w/2), _y+(_h/2), 4);
     }
@@ -52,35 +71,22 @@ class button{
 };
 
 //********************************
-// System Constants
-const uint16_t ScreenWidth = 320;
-const uint16_t ScreenHeight = 480;
-enum MachineStates { Boot, Wait, Run, Error };
-
-//********************************
-// Global Objects
-TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
-FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenWidth, PIN_SDA, PIN_SCL);
-TouchPoint LastTouch;
-
-//********************************
-// Global Variables
-MachineStates CurrentState;
-uint32_t TouchCount = 0;
-
-//********************************
-// Screen Objects
-button btnBTLE = button(10, 10, 64, 64, "BTLE", *logPress);
-button btnWIFI = button(10, 84, 64, 64, "WIFI", *logPress);
-button btnHOME = button(10, 168, 64, 64, "HOME", *logPress);
+// put callbacks above button declarations so the address
+// is in memory when being targeted as a callback
 
 //********************************
 // logPress
-void logPress(){
+static void logPress(){
   if(Serial.availableForWrite()){
     Serial.printf("Touch %u at %u:%u\n", TouchCount, LastTouch.xPos, LastTouch.yPos);
   }
 }
+
+//********************************
+// Screen Objects
+button btnBTLE = button(10, 10, 64, 64, "BTLE", &logPress);
+button btnWIFI = button(10, 84, 64, 64, "WIFI", &logPress);
+button btnHOME = button(10, 168, 64, 64, "HOME", &logPress);
 
 //********************************
 void setup(){
