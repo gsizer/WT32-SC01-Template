@@ -13,21 +13,24 @@
 
 //********************************
 // System Constants
-const uint16_t ScreenWidth = 320;
-const uint16_t ScreenHeight = 480;
+const uint16_t ScreenWidth = 480;
+const uint16_t ScreenHeight = 320;
+const uint16_t ScreenRotation = 1;
+const String Hardware = "WT32-SC01";
 
 //********************************
 // Global Objects
-TFT_eSPI Display = TFT_eSPI(ScreenWidth, ScreenHeight);
-FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenWidth, PIN_SDA, PIN_SCL);
+TFT_eSPI Display = TFT_eSPI();
+FT62XXTouchScreen TouchPanel = FT62XXTouchScreen(ScreenHeight, PIN_SDA, PIN_SCL);
 TouchPoint LastTouch;
 
 //********************************
 // Global Variables
 uint32_t TouchCount = 0;
+bool NeedRedraw = false;
 
 //********************************
-// BUTTON_H depends on Display and TouchPanel existing
+// BUTTON depends on Display and TouchPanel existing
 // no error checking yet
 class button{
   //********************************
@@ -37,9 +40,10 @@ class button{
     void(*_callback)()=nullptr;
     //********
     void _press(){
-      Display.drawRoundRect(_x, _y, _w, _h, 4, TFT_CYAN);
+      Display.fillRoundRect(_x, _y, _w, _h, 4, TFT_CYAN);
       Display.setTextColor(TFT_BLACK);
       Display.drawCentreString(_label, _x+(_w/2), _y+(_h/2), 4);
+      (*_callback)();
     }
     //********
     void _release(){
@@ -60,17 +64,18 @@ class button{
       _release();
     }
     //********
-    void checkTouch(uint8_t x, uint8_t y){
+    bool checkTouch(uint8_t x, uint8_t y){
       if(x>_x && x<(_x+_w)){
         // button laterally hit
         if( y>_y && y<(_y+_h)){
           // button vertically hit
           // execute code at callback
           _press();
-          (*_callback)();
+          return true;
         }
       }
       _release();
+      return false;
     }
 };
 
@@ -79,34 +84,47 @@ class button{
 // is in memory when being targeted as a callback
 
 //********************************
-// logPress
-static void logPress(){
-  TouchCount++;
-  if(Serial.availableForWrite()){
-    Serial.printf("Touch %u at %u:%u\n", TouchCount, LastTouch.xPos, LastTouch.yPos);
-  }
+// btnHOME callback
+static void btnHOMEcb(){
+  Display.fillRoundRect(84, 10, ScreenWidth-10, ScreenHeight-10, 4, TFT_DARKCYAN);
+}
+
+//********************************
+// btnWIFI
+static void btnWIFIcb(){
+  Display.fillRoundRect(84, 10, ScreenWidth-10, ScreenHeight-10, 4, TFT_GREEN);
+}
+
+//********************************
+// btnBTLE
+static void btnBTLEcb(){
+  Display.fillRoundRect(84, 10, ScreenWidth-10, ScreenHeight-10, 4, TFT_BLUE);
 }
 
 //********************************
 // Screen Objects
-const char *labels[3] = {"BTLE", "WIFI", "HOME"};
+enum scrNames { scrBTLE, scrWIFI, scrHOME };
+scrNames CurrentScreen = scrHOME;
 
-button btnBTLE = button(10, 10, 64, 64, labels[0], &logPress);
-button btnWIFI = button(10, 84, 64, 64, labels[1], &logPress);
-button btnHOME = button(10, 158, 64, 64, labels[2], &logPress);
+const char *btnLabels[3] = {"BTLE", "WIFI", "HOME"};
+button btnBTLE = button(10, 10, 64, 64, btnLabels[0], &btnBTLEcb);
+button btnWIFI = button(10, 84, 64, 64, btnLabels[1], &btnWIFIcb);
+button btnHOME = button(10, 158, 64, 64, btnLabels[2], &btnHOMEcb);
 
 //********************************
 void setup(){
   // Hardware Display
   Display.init();
-  Display.setRotation(1);
+  Display.setRotation(ScreenRotation);
   Display.setTextColor(TFT_ORANGE);
   Display.fillScreen(TFT_BLACK);
+  Display.drawCentreString(Hardware, ScreenWidth/2, ScreenHeight/2, 4);
   // Backlight
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, HIGH);
   // Touch Panel
   TouchPanel.begin();
+  // GUI
   // attempt serial connection
   Serial.begin(115200);
   Serial.println("");
@@ -116,9 +134,8 @@ void setup(){
 void loop(){
   LastTouch = TouchPanel.read();
   if(LastTouch.touched){
-    btnBTLE.checkTouch(LastTouch.xPos, LastTouch.yPos);
-    btnWIFI.checkTouch(LastTouch.xPos, LastTouch.yPos);
-    btnHOME.checkTouch(LastTouch.xPos, LastTouch.yPos);
+    if(btnBTLE.checkTouch(LastTouch.xPos, LastTouch.yPos)){};
+    if(btnWIFI.checkTouch(LastTouch.xPos, LastTouch.yPos)){};
+    if(btnHOME.checkTouch(LastTouch.xPos, LastTouch.yPos)){};
   }
-  delay(100);
 }
